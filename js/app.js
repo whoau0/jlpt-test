@@ -45,6 +45,15 @@ class KanjiApp {
     localStorage.setItem('jlpt_learned', JSON.stringify([...this.learned]));
     localStorage.setItem('jlpt_wrong', JSON.stringify(this.wrongMap));
     localStorage.setItem('jlpt_stats', JSON.stringify(this.stats));
+
+    // Supabase 자동 동기화 (연결된 경우 백그라운드 자동 업로드)
+    if (window.supabaseSync && window.supabaseSync.isConnected && window.supabaseSync.config.autoSync) {
+      window.supabaseSync.uploadRecord({
+        learned: this.learned,
+        wrongMap: this.wrongMap,
+        stats: this.stats
+      });
+    }
   }
 
   initDOM() {
@@ -242,6 +251,119 @@ class KanjiApp {
         if (e.target.closest('.btn-close-modal') || e.target === this.modalOverlay) {
           this.modalOverlay.classList.remove('open');
         }
+      });
+    }
+
+    // Supabase Cloud Modal Bindings
+    this.bindCloudModal();
+  }
+
+  bindCloudModal() {
+    const cloudModal = document.getElementById('cloudModalOverlay');
+    const btnOpen = document.getElementById('btnOpenCloudModal');
+    const btnClose = document.getElementById('btnCloseCloudModal');
+    const btnSave = document.getElementById('btnSaveCloudConfig');
+    const btnUpload = document.getElementById('btnCloudUpload');
+    const btnDownload = document.getElementById('btnCloudDownload');
+
+    const urlInput = document.getElementById('supabaseUrlInput');
+    const keyInput = document.getElementById('supabaseKeyInput');
+    const userInput = document.getElementById('supabaseUserInput');
+    const statusText = document.getElementById('cloudStatusText');
+    const statusDot = document.getElementById('cloudStatusDot');
+
+    const updateStatusUI = () => {
+      const sync = window.supabaseSync;
+      if (sync && sync.isConnected) {
+        statusText.textContent = '클라우드 연결 완료 (동기화 활성)';
+        statusText.style.color = 'var(--success)';
+        statusDot.style.background = 'var(--success)';
+      } else {
+        statusText.textContent = '로컬 모드 (미연결)';
+        statusText.style.color = 'var(--text-sub)';
+        statusDot.style.background = '#94a3b8';
+      }
+    };
+
+    if (btnOpen) {
+      btnOpen.addEventListener('click', () => {
+        const sync = window.supabaseSync;
+        if (sync && sync.config) {
+          urlInput.value = sync.config.url || '';
+          keyInput.value = sync.config.key || '';
+          userInput.value = sync.config.userId || 'whoau0';
+        }
+        updateStatusUI();
+        cloudModal.classList.add('open');
+      });
+    }
+
+    if (btnClose) {
+      btnClose.addEventListener('click', () => cloudModal.classList.remove('open'));
+    }
+
+    if (cloudModal) {
+      cloudModal.addEventListener('click', (e) => {
+        if (e.target === cloudModal) cloudModal.classList.remove('open');
+      });
+    }
+
+    if (btnSave) {
+      btnSave.addEventListener('click', () => {
+        const url = urlInput.value.trim();
+        const key = keyInput.value.trim();
+        const userId = userInput.value.trim() || 'whoau0';
+
+        if (!url || !key) {
+          alert('Supabase URL과 Anon Public Key를 모두 입력해 주세요.');
+          return;
+        }
+
+        const success = window.supabaseSync.saveConfig(url, key, userId, true);
+        if (success) {
+          alert('✅ Supabase 연결 설정이 완료되었습니다!');
+          updateStatusUI();
+        } else {
+          alert('⚠️ 연결 설정에 실패했습니다. URL과 Key를 확인해 주세요.');
+        }
+      });
+    }
+
+    if (btnUpload) {
+      btnUpload.addEventListener('click', async () => {
+        btnUpload.disabled = true;
+        btnUpload.textContent = '업로드 중...';
+        const res = await window.supabaseSync.uploadRecord({
+          learned: this.learned,
+          wrongMap: this.wrongMap,
+          stats: this.stats
+        });
+        alert(res.message);
+        btnUpload.disabled = false;
+        btnUpload.textContent = '⬆️ 클라우드에 백업';
+      });
+    }
+
+    if (btnDownload) {
+      btnDownload.addEventListener('click', async () => {
+        if (!confirm('클라우드 기록을 불러오시겠습니까? 현재 기기의 데이터가 클라우드 기록으로 갱신됩니다.')) return;
+        btnDownload.disabled = true;
+        btnDownload.textContent = '다운로드 중...';
+        const res = await window.supabaseSync.downloadRecord();
+        if (res.success && res.data) {
+          this.learned = new Set(res.data.learned || []);
+          this.wrongMap = res.data.wrongMap || {};
+          this.stats = res.data.stats || this.stats;
+          this.saveStorage();
+          this.updateStatsUI();
+          this.renderCurrentView();
+          alert(`✅ 클라우드 기록 복원 완료! (마지막 저장: ${new Date(res.updatedAt).toLocaleString()})`);
+          cloudModal.classList.remove('open');
+        } else {
+          alert(res.message);
+        }
+        btnDownload.disabled = false;
+        btnDownload.textContent = '⬇️ 클라우드에서 복원';
       });
     }
   }

@@ -21,6 +21,9 @@
           <span class="badge-n5">N5 완벽수록</span>
         </div>
         <div class="header-actions">
+          <button id="btnOpenCloudModal" class="icon-btn" title="Supabase 클라우드 동기화">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11a4 4 0 00-7.8-1.4A5 5 0 003 14a5 5 0 005 5h11a4 4 0 000-8z"/></svg>
+          </button>
           <button id="btnToggleSound" class="icon-btn active" title="효과음 켜기/끄기">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
           </button>
@@ -297,9 +300,64 @@
     <div id="detailModalOverlay" class="modal-overlay">
       <div id="modalContent" class="modal-content"></div>
     </div>
+
+    <!-- Cloud Sync Modal (Supabase) -->
+    <div id="cloudModalOverlay" class="modal-overlay">
+      <div class="modal-content" style="max-height:90vh;">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.4rem;">☁️</span>
+            <h3 style="font-size:1.15rem;font-weight:800;">Supabase 클라우드 동기화</h3>
+          </div>
+          <button class="btn-close-modal" id="btnCloseCloudModal">✕</button>
+        </div>
+
+        <div style="font-size:0.85rem;color:var(--text-sub);line-height:1.45;">
+          기록을 클라우드에 영구 보존하고, 스마트폰과 PC 어디서나 이어 공부하세요!
+        </div>
+
+        <div id="cloudStatusBanner" style="padding:10px 12px;border-radius:var(--radius-md);background:var(--bg-main);border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:0.85rem;">
+          <span>연결 상태: <b id="cloudStatusText" style="color:var(--text-sub);">로컬 모드 (미연결)</b></span>
+          <span id="cloudStatusDot" style="width:10px;height:10px;border-radius:50%;background:#94a3b8;display:inline-block;"></span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;">Supabase Project URL</label>
+            <input type="text" id="supabaseUrlInput" class="search-input" style="width:100%;font-size:0.85rem;" placeholder="https://xxxx.supabase.co">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;">Supabase Anon Public Key</label>
+            <input type="password" id="supabaseKeyInput" class="search-input" style="width:100%;font-size:0.85rem;" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6...">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;font-weight:700;color:var(--text-sub);display:block;margin-bottom:4px;">사용자 계정 ID</label>
+            <input type="text" id="supabaseUserInput" class="search-input" style="width:100%;font-size:0.85rem;" value="whoau0" placeholder="whoau0">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button id="btnSaveCloudConfig" class="btn-submit" style="flex:1;padding:12px;justify-content:center;">
+            연결 정보 저장
+          </button>
+        </div>
+
+        <div style="display:flex;gap:8px;border-top:1px dashed var(--border);padding-top:12px;">
+          <button id="btnCloudUpload" class="btn-card btn-know" style="padding:10px;font-size:0.85rem;">
+            ⬆️ 클라우드에 백업
+          </button>
+          <button id="btnCloudDownload" class="btn-card btn-again" style="padding:10px;font-size:0.85rem;background:#e0e7ff;color:#4338ca;border-color:#c7d2fe;">
+            ⬇️ 클라우드에서 복원
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-sync.js"></script>
   <script src="js/kanji-n5-data.js"></script>
   <script src="js/kanji-other-levels.js"></script>
   <script src="js/sound-engine.js"></script>
