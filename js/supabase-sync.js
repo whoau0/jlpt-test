@@ -11,14 +11,14 @@ class SupabaseSyncManager {
     this.saveTimeout = null;
     this.statusEl = null;
 
-    // 1. 설정 로드: config.js 기본값과 localStorage 값 병합
-    const saved = JSON.parse(localStorage.getItem('jlpt_supabase_config') || '{}');
+    // 1. 설정 로드: config.js 기본값 우선 적용 (없을 경우 localStorage)
     const defaults = typeof SUPABASE_DEFAULT_CONFIG !== 'undefined' ? SUPABASE_DEFAULT_CONFIG : {};
+    const saved = JSON.parse(localStorage.getItem('jlpt_supabase_config') || '{}');
 
     this.config = {
-      url: saved.url || defaults.url || '',
-      key: saved.key || defaults.key || '',
-      userId: saved.userId || defaults.userId || 'whoau0'
+      url: defaults.url || saved.url || '',
+      key: defaults.key || saved.key || '',
+      userId: defaults.userId || saved.userId || 'whoau0'
     };
 
     if (this.config.url && this.config.key) {
