@@ -21,8 +21,12 @@
           <span class="badge-n5">N5 완벽수록</span>
         </div>
         <div class="header-actions">
-          <button id="btnOpenCloudModal" class="icon-btn" title="Supabase 클라우드 동기화">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 11a4 4 0 00-7.8-1.4A5 5 0 003 14a5 5 0 005 5h11a4 4 0 000-8z"/></svg>
+          <div id="cloudAutoSyncStatus" class="cloud-sync-badge" title="클라우드 DB 실시간 자동 저장 상태">
+            <span class="sync-dot off"></span>
+            <span class="sync-text">로컬 저장 모드</span>
+          </div>
+          <button id="btnOpenCloudModal" class="icon-btn" title="DB 연결 설정">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           </button>
           <button id="btnToggleSound" class="icon-btn active" title="효과음 켜기/끄기">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
@@ -357,6 +361,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
   <script src="js/supabase-sync.js"></script>
   <script src="js/kanji-n5-data.js"></script>
   <script src="js/kanji-other-levels.js"></script>

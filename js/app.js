@@ -39,6 +39,11 @@ class KanjiApp {
     this.bindEvents();
     this.updateStatsUI();
     this.renderCurrentView();
+
+    // 앱 실행 즉시 Supabase 클라우드 DB에서 최신 기록 자동 로드 (Zero-Click Auto-Fetch)
+    if (window.supabaseSync) {
+      window.supabaseSync.syncOnStartup(this);
+    }
   }
 
   saveStorage() {
@@ -46,9 +51,9 @@ class KanjiApp {
     localStorage.setItem('jlpt_wrong', JSON.stringify(this.wrongMap));
     localStorage.setItem('jlpt_stats', JSON.stringify(this.stats));
 
-    // Supabase 자동 동기화 (연결된 경우 백그라운드 자동 업로드)
-    if (window.supabaseSync && window.supabaseSync.isConnected && window.supabaseSync.config.autoSync) {
-      window.supabaseSync.uploadRecord({
+    // 일반 DB처럼 문제를 풀 때마다 백그라운드 실시간 자동 저장 (사용자가 백업 버튼 누를 필요 없음!)
+    if (window.supabaseSync) {
+      window.supabaseSync.scheduleAutoSave({
         learned: this.learned,
         wrongMap: this.wrongMap,
         stats: this.stats
@@ -319,10 +324,12 @@ class KanjiApp {
           return;
         }
 
-        const success = window.supabaseSync.saveConfig(url, key, userId, true);
+        const success = window.supabaseSync.saveConfig(url, key, userId);
         if (success) {
-          alert('✅ Supabase 연결 설정이 완료되었습니다!');
+          alert('✅ Supabase 실시간 연동 완료!\n이제 백업 버튼을 누를 필요 없이 모든 학습 기록이 DB에 자동으로 실시간 저장됩니다.');
           updateStatusUI();
+          window.supabaseSync.syncOnStartup(this);
+          cloudModal.classList.remove('open');
         } else {
           alert('⚠️ 연결 설정에 실패했습니다. URL과 Key를 확인해 주세요.');
         }
