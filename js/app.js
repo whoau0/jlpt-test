@@ -540,7 +540,7 @@ class KanjiApp {
   }
 
   // ==========================================
-  // 2. 4지선다 객관식 퀴즈 (Choice Quiz)
+  // 2. 4지선다 객관식 퀴즈 (Choice Quiz) - 한자/한자어 전용
   // ==========================================
   generateChoiceQuiz() {
     this.quizAnswered = false;
@@ -554,12 +554,14 @@ class KanjiApp {
     const target = pool[Math.floor(Math.random() * pool.length)];
     this.quizCurrent = target;
 
-    // Pick quiz subtype:
-    // 0: 한자 -> 한국어 뜻/음
-    // 1: 한자 -> 일본어 훈독(히라가나)
-    // 2: 한자 -> 일본어 음독(가타카나)
-    // 3: 뜻/독음 -> 한자 찾기 (역방향)
-    const types = ['meaning', 'kunyomi', 'onyomi', 'reverse'];
+    // 문제 유형: 음독/훈독은 완전 제외하고, 순수 한자/한자어 중심 문제로만 출제
+    // 1: meaning (한자 ➔ 한국어 뜻/음)
+    // 2: reverse (뜻/음 ➔ 한자 찾기)
+    // 3: word_kanji (실전 한자어 빈칸 채우기)
+    const types = ['meaning', 'reverse'];
+    if (target.examples && target.examples.length > 0 && target.examples.some(ex => ex.word.includes(target.kanji))) {
+      types.push('word_kanji');
+    }
     const selectedType = types[Math.floor(Math.random() * types.length)];
 
     let questionTitle = "";
@@ -567,70 +569,77 @@ class KanjiApp {
     let subCue = "";
     let correctAnswer = "";
     let wrongOptions = [];
+    let isKanjiOptions = false;
 
     if (selectedType === 'meaning') {
-      this.quizTypeBadge.textContent = "뜻 · 음 맞히기";
-      questionTitle = "다음 한자의 올바른 한국어 훈/음은?";
+      this.quizTypeBadge.textContent = "한자 ➔ 뜻 · 음 맞히기";
+      questionTitle = "다음 한자의 올바른 한국어 뜻/음은?";
       mainDisplay = target.kanji;
-      subCue = `(${target.strokes}획)`;
+      subCue = `(${target.strokes}획 · 부수 ${target.radical})`;
       correctAnswer = `${target.meaning} ${target.sound}`;
 
       const otherKanjis = this.kanjiList.filter(k => k.id !== target.id);
       this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
         wrongOptions.push(`${k.meaning} ${k.sound}`);
       });
+      isKanjiOptions = false;
 
-    } else if (selectedType === 'kunyomi') {
-      this.quizTypeBadge.textContent = "훈독 (訓読み) 맞히기";
-      questionTitle = "다음 한자의 훈독(뜻으로 읽기)은?";
-      mainDisplay = target.kanji;
-      subCue = `[${target.meaning} ${target.sound}]`;
-      correctAnswer = target.kunyomi ? target.kunyomi.split(' ')[0] : '없음';
-
-      const otherKanjis = this.kanjiList.filter(k => k.id !== target.id && k.kunyomi);
-      this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
-        wrongOptions.push(k.kunyomi.split(' ')[0]);
-      });
-
-    } else if (selectedType === 'onyomi') {
-      this.quizTypeBadge.textContent = "음독 (音読み) 맞히기";
-      questionTitle = "다음 한자의 음독(소리로 읽기)은?";
-      mainDisplay = target.kanji;
-      subCue = `[${target.meaning} ${target.sound}]`;
-      correctAnswer = target.onyomi ? target.onyomi.split(' ')[0] : '없음';
-
-      const otherKanjis = this.kanjiList.filter(k => k.id !== target.id && k.onyomi);
-      this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
-        wrongOptions.push(k.onyomi.split(' ')[0]);
-      });
-
-    } else {
-      this.quizTypeBadge.textContent = "한자 찾기 (역방향)";
-      questionTitle = "다음 뜻과 발음에 해당하는 한자는?";
+    } else if (selectedType === 'reverse') {
+      this.quizTypeBadge.textContent = "뜻 · 음 ➔ 한자 찾기";
+      questionTitle = "다음 뜻과 소리에 해당하는 한자는?";
       mainDisplay = `"${target.meaning} ${target.sound}"`;
-      subCue = `훈: ${target.kunyomi || '-'} / 음: ${target.onyomi || '-'}`;
+      subCue = `(부수: ${target.radical} · ${target.strokes}획)`;
       correctAnswer = target.kanji;
 
       const otherKanjis = this.kanjiList.filter(k => k.id !== target.id);
       this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
         wrongOptions.push(k.kanji);
       });
+      isKanjiOptions = true;
+
+    } else {
+      // word_kanji: 실전 한자어 단어 문제
+      this.quizTypeBadge.textContent = "실전 한자어 맞히기";
+      const validExs = target.examples.filter(ex => ex.word.includes(target.kanji));
+      const chosenEx = validExs[Math.floor(Math.random() * validExs.length)];
+      
+      // 단어에서 해당 한자를 [ ? ] 로 대체
+      const maskedWord = chosenEx.word.replace(new RegExp(target.kanji, 'g'), '[ ? ]');
+      
+      questionTitle = "빈칸 [ ? ]에 들어갈 올바른 한자는?";
+      mainDisplay = maskedWord;
+      subCue = `단어 뜻: "${chosenEx.meaning}" (${chosenEx.reading})`;
+      correctAnswer = target.kanji;
+
+      const otherKanjis = this.kanjiList.filter(k => k.id !== target.id);
+      this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
+        wrongOptions.push(k.kanji);
+      });
+      isKanjiOptions = true;
     }
 
     this.quizQuestionTitle.textContent = questionTitle;
     this.quizTargetKanji.textContent = mainDisplay;
     this.quizSubCue.textContent = subCue;
 
+    // 한자 보기일 때 2x2 그리드 레이아웃 적용
+    if (isKanjiOptions) {
+      this.quizOptionsWrap.classList.add('kanji-layout');
+    } else {
+      this.quizOptionsWrap.classList.remove('kanji-layout');
+    }
+
     const allOptions = this.shuffle([correctAnswer, ...wrongOptions]);
     this.quizOptionsWrap.innerHTML = '';
 
     allOptions.forEach(opt => {
       const btn = document.createElement('button');
-      btn.className = 'option-btn';
-      btn.innerHTML = `<span>${opt}</span><span class="icon-indicator"></span>`;
+      btn.className = 'option-btn' + (isKanjiOptions ? ' is-kanji' : '');
+      btn.innerHTML = `<span>${opt}</span>` + (!isKanjiOptions ? `<span class="icon-indicator"></span>` : '');
       btn.addEventListener('click', () => this.handleChoiceAnswer(btn, opt === correctAnswer, target, correctAnswer));
       this.quizOptionsWrap.appendChild(btn);
     });
+  }
   }
 
   handleChoiceAnswer(selectedBtn, isCorrect, kanjiObj, correctAnswerText) {
