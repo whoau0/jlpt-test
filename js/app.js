@@ -539,8 +539,42 @@ class KanjiApp {
     this.renderFlashcard();
   }
 
+  // 한국어 표준 훈음(뜻과 발음) 반환 헬퍼 (예: 一 -> '한 일', 二 -> '두 이', 日 -> '날 일')
+  getHuneum(k) {
+    if (!k) return '';
+    const specialMap = {
+      '一': '한 일',
+      '二': '두 이',
+      '三': '석 삼',
+      '四': '넉 사',
+      '五': '다섯 오',
+      '六': '여섯 육',
+      '七': '일곱 칠',
+      '八': '여덟 팔',
+      '九': '아홉 구',
+      '十': '열 십',
+      '百': '일백 백',
+      '千': '일천 천',
+      '万': '일만 만',
+      '円': '둥글 원',
+      '半': '반 반',
+      '女': '계집 여',
+      '男': '사내 남',
+      '子': '아들 자',
+      '父': '아비 부',
+      '母': '어미 모',
+      '友': '벗 우',
+      '何': '어찌 하'
+    };
+    if (specialMap[k.kanji]) return specialMap[k.kanji];
+
+    // 대표 뜻의 첫 번째 어휘 추출 (예: '날, 해' -> '날')
+    const primaryMeaning = k.meaning.split(/[,/]/)[0].trim();
+    return `${primaryMeaning} ${k.sound}`;
+  }
+
   // ==========================================
-  // 2. 4지선다 객관식 퀴즈 (Choice Quiz) - 한자/한자어 전용
+  // 2. 4지선다 객관식 퀴즈 (Choice Quiz) - 한자 문제 ➔ 한글 뜻/발음 선택
   // ==========================================
   generateChoiceQuiz() {
     this.quizAnswered = false;
@@ -554,92 +588,44 @@ class KanjiApp {
     const target = pool[Math.floor(Math.random() * pool.length)];
     this.quizCurrent = target;
 
-    // 문제 유형: 음독/훈독은 완전 제외하고, 순수 한자/한자어 중심 문제로만 출제
-    // 1: meaning (한자 ➔ 한국어 뜻/음)
-    // 2: reverse (뜻/음 ➔ 한자 찾기)
-    // 3: word_kanji (실전 한자어 빈칸 채우기)
-    const types = ['meaning', 'reverse'];
-    if (target.examples && target.examples.length > 0 && target.examples.some(ex => ex.word.includes(target.kanji))) {
-      types.push('word_kanji');
-    }
-    const selectedType = types[Math.floor(Math.random() * types.length)];
+    // 4지선다: 한자가 문제로 나오고, 보기는 한글 뜻과 발음(훈음) 4개
+    this.quizTypeBadge.textContent = "한자 ➔ 뜻 · 발음 맞히기";
+    this.quizQuestionTitle.textContent = "다음 한자의 올바른 한국어 뜻과 발음은?";
+    this.quizTargetKanji.textContent = target.kanji;
+    this.quizSubCue.textContent = `(${target.strokes}획 · 부수: ${target.radical})`;
 
-    let questionTitle = "";
-    let mainDisplay = "";
-    let subCue = "";
-    let correctAnswer = "";
-    let wrongOptions = [];
-    let isKanjiOptions = false;
+    const correctAnswer = this.getHuneum(target);
 
-    if (selectedType === 'meaning') {
-      this.quizTypeBadge.textContent = "한자 ➔ 뜻 · 음 맞히기";
-      questionTitle = "다음 한자의 올바른 한국어 뜻/음은?";
-      mainDisplay = target.kanji;
-      subCue = `(${target.strokes}획 · 부수 ${target.radical})`;
-      correctAnswer = `${target.meaning} ${target.sound}`;
+    // 오답 보기 3개 구성: 동일 카테고리 한자들을 우선하여 자연스러운 보기 생성
+    const sameCategory = this.kanjiList.filter(k => k.id !== target.id && k.category === target.category);
+    const otherCategory = this.kanjiList.filter(k => k.id !== target.id && k.category !== target.category);
+    
+    const candidatePool = [...this.shuffle(sameCategory), ...this.shuffle(otherCategory)];
+    const wrongOptions = [];
+    const usedTexts = new Set([correctAnswer]);
 
-      const otherKanjis = this.kanjiList.filter(k => k.id !== target.id);
-      this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
-        wrongOptions.push(`${k.meaning} ${k.sound}`);
-      });
-      isKanjiOptions = false;
-
-    } else if (selectedType === 'reverse') {
-      this.quizTypeBadge.textContent = "뜻 · 음 ➔ 한자 찾기";
-      questionTitle = "다음 뜻과 소리에 해당하는 한자는?";
-      mainDisplay = `"${target.meaning} ${target.sound}"`;
-      subCue = `(부수: ${target.radical} · ${target.strokes}획)`;
-      correctAnswer = target.kanji;
-
-      const otherKanjis = this.kanjiList.filter(k => k.id !== target.id);
-      this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
-        wrongOptions.push(k.kanji);
-      });
-      isKanjiOptions = true;
-
-    } else {
-      // word_kanji: 실전 한자어 단어 문제
-      this.quizTypeBadge.textContent = "실전 한자어 맞히기";
-      const validExs = target.examples.filter(ex => ex.word.includes(target.kanji));
-      const chosenEx = validExs[Math.floor(Math.random() * validExs.length)];
-      
-      // 단어에서 해당 한자를 [ ? ] 로 대체
-      const maskedWord = chosenEx.word.replace(new RegExp(target.kanji, 'g'), '[ ? ]');
-      
-      questionTitle = "빈칸 [ ? ]에 들어갈 올바른 한자는?";
-      mainDisplay = maskedWord;
-      subCue = `단어 뜻: "${chosenEx.meaning}" (${chosenEx.reading})`;
-      correctAnswer = target.kanji;
-
-      const otherKanjis = this.kanjiList.filter(k => k.id !== target.id);
-      this.shuffle(otherKanjis).slice(0, 3).forEach(k => {
-        wrongOptions.push(k.kanji);
-      });
-      isKanjiOptions = true;
+    for (const cand of candidatePool) {
+      const text = this.getHuneum(cand);
+      if (!usedTexts.has(text)) {
+        usedTexts.add(text);
+        wrongOptions.push(text);
+        if (wrongOptions.length >= 3) break;
+      }
     }
 
-    this.quizQuestionTitle.textContent = questionTitle;
-    this.quizTargetKanji.textContent = mainDisplay;
-    this.quizSubCue.textContent = subCue;
-
-    // 한자 보기일 때 2x2 그리드 레이아웃 적용
-    if (isKanjiOptions) {
-      this.quizOptionsWrap.classList.add('kanji-layout');
-    } else {
-      this.quizOptionsWrap.classList.remove('kanji-layout');
-    }
+    // 1열 리스트 레이아웃
+    this.quizOptionsWrap.classList.remove('kanji-layout');
 
     const allOptions = this.shuffle([correctAnswer, ...wrongOptions]);
     this.quizOptionsWrap.innerHTML = '';
 
-    allOptions.forEach(opt => {
+    allOptions.forEach((opt, idx) => {
       const btn = document.createElement('button');
-      btn.className = 'option-btn' + (isKanjiOptions ? ' is-kanji' : '');
-      btn.innerHTML = `<span>${opt}</span>` + (!isKanjiOptions ? `<span class="icon-indicator"></span>` : '');
+      btn.className = 'option-btn';
+      btn.innerHTML = `<span><strong style="color:var(--primary);margin-right:8px;">${idx + 1}.</strong>${opt}</span><span class="icon-indicator"></span>`;
       btn.addEventListener('click', () => this.handleChoiceAnswer(btn, opt === correctAnswer, target, correctAnswer));
       this.quizOptionsWrap.appendChild(btn);
     });
-  }
   }
 
   handleChoiceAnswer(selectedBtn, isCorrect, kanjiObj, correctAnswerText) {
@@ -670,7 +656,7 @@ class KanjiApp {
       // Highlight the right answer
       const allBtns = this.quizOptionsWrap.querySelectorAll('.option-btn');
       allBtns.forEach(b => {
-        if (b.textContent.trim().startsWith(correctAnswerText)) {
+        if (b.textContent.includes(correctAnswerText)) {
           b.classList.add('correct');
         }
       });
@@ -686,7 +672,8 @@ class KanjiApp {
 
   showQuizFeedback(isCorrect, kanjiObj) {
     this.quizFeedback.className = `quiz-feedback show ${isCorrect ? 'correct' : 'incorrect'}`;
-    const title = isCorrect ? '🎉 정답입니다!' : '💡 아쉽네요! 다시 기억해봐요';
+    const title = isCorrect ? '🎉 정답입니다!' : '💡 아쉽네요! 정답을 확인하세요';
+    const huneum = this.getHuneum(kanjiObj);
     
     const kunClean = kanjiObj.kunyomi || '';
     const onClean = kanjiObj.onyomi || '';
@@ -695,10 +682,13 @@ class KanjiApp {
       <div class="feedback-title">${title}</div>
       <div class="feedback-detail">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <span style="font-size:1.1rem;"><strong>${kanjiObj.kanji}</strong>: [${kanjiObj.meaning} ${kanjiObj.sound}]</span>
+          <span style="font-size:1.15rem;"><strong>${kanjiObj.kanji}</strong> = <b style="color:var(--primary);">${huneum}</b></span>
           <button onclick="app.playVoiceWithEffect('${kanjiObj.kanji}', this)" class="btn-voice-play" style="width:28px;height:28px;" title="한자 소리">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
           </button>
+        </div>
+        <div style="font-size:0.83rem;color:var(--text-sub);margin-bottom:6px;">
+          획수: ${kanjiObj.strokes}획 · 부수: ${kanjiObj.radical}
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;font-size:0.85rem;">
           <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.03);padding:4px 8px;border-radius:6px;">
